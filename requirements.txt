@@ -1,0 +1,9 @@
+Django>=5.2,<6.2
+djangorestframework>=3.16
+celery[redis]>=5.5
+cryptography>=45.0
+django-filter>=25.1
+python-dotenv>=1.1
+
+# 需要对接真实 MySQL 实例执行 ALTER USER 时再启用
+# pymysql>=1.1

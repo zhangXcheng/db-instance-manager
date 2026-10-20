@@ -1,0 +1,40 @@
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+
+# ---------- 虚拟环境 ----------
+.venv/
+venv/
+env/
+
+# ---------- Django ----------
+db.sqlite3
+db.sqlite3-journal
+/staticfiles/
+/media/
+
+# ---------- 环境变量（只提交示例文件） ----------
+.env
+.env.*
+!.env.example
+
+# ---------- 测试与静态检查 ----------
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.ruff_cache/
+.mypy_cache/
+
+# ---------- 编辑器 / 系统 ----------
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# ---------- 日志 ----------
+*.log
