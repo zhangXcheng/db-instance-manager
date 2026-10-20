@@ -26,8 +26,18 @@ DEFAULT_DEMO_PASSWORD = "Demo#2026"
 class Command(BaseCommand):
     help = "生成部门 / 集群 / 实例 / 凭据的演示数据，并创建演示账号"
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--port",
+            type=int,
+            default=8000,
+            help="本机 Django 服务端口，用于生成可探测的 demo-self 实例（默认 8000）",
+        )
+
     @transaction.atomic
     def handle(self, *args, **options):
+        demo_port = options["port"]
+
         departments = [
             ("技术部", "TECH", "张伟"),
             ("财务部", "FIN", "李娜"),
@@ -68,7 +78,7 @@ class Command(BaseCommand):
             ("cache-01", "CACHE-REDIS", "10.0.3.11", 6379, DBInstance.Role.STANDALONE, DBInstance.Status.ONLINE),
             ("finance-db-01", "FIN-MYSQL", "10.0.4.11", 3306, DBInstance.Role.PRIMARY, DBInstance.Status.UNKNOWN),
             # 指向本机 Django 服务，runserver 起来后探测这个实例就是可达的
-            ("demo-self", "DEMO", "127.0.0.1", 8000, DBInstance.Role.STANDALONE, DBInstance.Status.UNKNOWN),
+            ("demo-self", "DEMO", "127.0.0.1", demo_port, DBInstance.Role.STANDALONE, DBInstance.Status.UNKNOWN),
         ]
         created_credentials = 0
         for name, cluster_code, host, port, role, status in instances:
@@ -120,7 +130,7 @@ class Command(BaseCommand):
         self.stdout.write("  后台      http://127.0.0.1:8000/admin/")
         self.stdout.write(self.style.SUCCESS(line))
         self.stdout.write(
-            "提示：runserver 起来后，对 demo-self（127.0.0.1:8000）点探测即可看到「可达」"
+            f"提示：runserver 起来后，对 demo-self（127.0.0.1:{demo_port}）点探测即可看到「可达」"
         )
         self.stdout.write("下一步：python manage.py runserver")
 

@@ -54,3 +54,12 @@ class SeedDemoCommandTests(TestCase):
         user = get_user_model().objects.get(username="demo")
         self.assertTrue(user.is_staff)
         self.assertTrue(user.is_superuser)
+
+    def test_custom_demo_port(self):
+        """runserver 换了端口时，demo-self 也要跟着指过去。"""
+        output = StringIO()
+        call_command("seed_demo", stdout=output, port=8123)
+
+        instance = DBInstance.objects.get(name="demo-self")
+        self.assertEqual(instance.port, 8123)
+        self.assertEqual(instance.host, "127.0.0.1")
