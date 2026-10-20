@@ -29,8 +29,11 @@ python manage.py seed_demo           # 生成演示数据 + 演示账号
 python manage.py runserver
 ```
 
-**演示账号：`demo` / `Demo#2026`**（管理员权限，由 `seed_demo` 自动创建）。
-想用自己的账号，再执行 `python manage.py createsuperuser` 即可。
+> [!IMPORTANT]
+> **登录账号：`demo` / `Demo#2026`**
+> `seed_demo` 会自动创建这个管理员账号，并在终端打印出来 —— **不需要自己执行 `createsuperuser`**。
+
+如果想用自己设的账号，执行 `python manage.py createsuperuser` 另建一个即可。
 
 演示数据里有一个 `demo-self` 实例指向 `127.0.0.1:8000`——启动服务后对它点「探测」，
 就能看到「可达」的完整链路；其余几个是内网 IP，探测会超时，正好用来对比失败分支。

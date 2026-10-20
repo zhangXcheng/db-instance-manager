@@ -221,6 +221,26 @@
 
   .login-card .btn { width: 100%; padding: 9px; }
 
+  .login-tip {
+    margin-top: 14px;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: #f2f6ff;
+    border: 1px solid #dbe6ff;
+    color: #1e40af;
+    font-size: 12.5px;
+    line-height: 1.7;
+    text-align: center;
+  }
+
+  .login-tip code {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    background: #e0e9ff;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 12px;
+  }
+
   .toast {
     position: fixed;
     right: 24px;
@@ -317,6 +337,10 @@
     <label for="password">密码</label>
     <input id="password" name="password" type="password" autocomplete="current-password" required>
     <button class="btn primary" type="submit" id="loginBtn">登录</button>
+    <div class="login-tip">
+      演示数据默认账号 <code>demo</code> / <code>Demo#2026</code><br>
+      由 <code>seed_demo</code> 自动创建
+    </div>
   </form>
 </div>
 
