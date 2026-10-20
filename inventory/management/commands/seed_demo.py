@@ -44,6 +44,9 @@ class Command(BaseCommand):
             ("用户中心", "USER-MYSQL", "TECH", Cluster.Engine.MYSQL, Cluster.Environment.PROD),
             ("缓存集群", "CACHE-REDIS", "TECH", Cluster.Engine.REDIS, Cluster.Environment.STAGING),
             ("财务库", "FIN-MYSQL", "FIN", Cluster.Engine.MYSQL, Cluster.Environment.PROD),
+            # 专门放一个「本机可探测」的实例，否则演示数据全是内网 IP，
+            # 点探测清一色超时，看不出成功路径长什么样
+            ("演示环境", "DEMO", "TECH", Cluster.Engine.MYSQL, Cluster.Environment.DEV),
         ]
         cluster_map = {}
         for name, code, department_code, engine, environment in clusters:
@@ -64,6 +67,8 @@ class Command(BaseCommand):
             ("user-db-01", "USER-MYSQL", "10.0.2.11", 3306, DBInstance.Role.PRIMARY, DBInstance.Status.OFFLINE),
             ("cache-01", "CACHE-REDIS", "10.0.3.11", 6379, DBInstance.Role.STANDALONE, DBInstance.Status.ONLINE),
             ("finance-db-01", "FIN-MYSQL", "10.0.4.11", 3306, DBInstance.Role.PRIMARY, DBInstance.Status.UNKNOWN),
+            # 指向本机 Django 服务，runserver 起来后探测这个实例就是可达的
+            ("demo-self", "DEMO", "127.0.0.1", 8000, DBInstance.Role.STANDALONE, DBInstance.Status.UNKNOWN),
         ]
         created_credentials = 0
         for name, cluster_code, host, port, role, status in instances:
@@ -114,6 +119,9 @@ class Command(BaseCommand):
         self.stdout.write("  接口文档  http://127.0.0.1:8000/api/docs/")
         self.stdout.write("  后台      http://127.0.0.1:8000/admin/")
         self.stdout.write(self.style.SUCCESS(line))
+        self.stdout.write(
+            "提示：runserver 起来后，对 demo-self（127.0.0.1:8000）点探测即可看到「可达」"
+        )
         self.stdout.write("下一步：python manage.py runserver")
 
     def _ensure_demo_user(self) -> tuple[str, bool]:

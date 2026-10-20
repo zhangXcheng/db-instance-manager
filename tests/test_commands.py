@@ -27,8 +27,9 @@ class SeedDemoCommandTests(TestCase):
         self.assertTrue(user.check_password("Demo#2026"))
 
         self.assertEqual(Department.objects.count(), 2)
-        self.assertEqual(Cluster.objects.count(), 4)
-        self.assertEqual(DBInstance.objects.count(), 5)
+        self.assertEqual(Cluster.objects.count(), 5)
+        self.assertEqual(DBInstance.objects.count(), 6)
+        self.assertTrue(DBInstance.objects.filter(name="demo-self").exists())
         self.assertIn("demo", output)
 
     def test_idempotent(self):
@@ -36,7 +37,7 @@ class SeedDemoCommandTests(TestCase):
         self._run()
 
         self.assertEqual(Department.objects.count(), 2)
-        self.assertEqual(DBInstance.objects.count(), 5)
+        self.assertEqual(DBInstance.objects.count(), 6)
         self.assertEqual(get_user_model().objects.filter(username="demo").count(), 1)
 
     def test_does_not_reset_existing_password(self):
