@@ -63,3 +63,12 @@ class SeedDemoCommandTests(TestCase):
         instance = DBInstance.objects.get(name="demo-self")
         self.assertEqual(instance.port, 8123)
         self.assertEqual(instance.host, "127.0.0.1")
+
+    def test_port_change_updates_existing_instance(self):
+        """先按默认端口跑过一遍，再用 --port 重跑，已存在的实例也要更新。"""
+        self._run()
+        self.assertEqual(DBInstance.objects.get(name="demo-self").port, 8000)
+
+        output = StringIO()
+        call_command("seed_demo", stdout=output, port=8123)
+        self.assertEqual(DBInstance.objects.get(name="demo-self").port, 8123)

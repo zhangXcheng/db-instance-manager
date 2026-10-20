@@ -87,6 +87,11 @@ class Command(BaseCommand):
                 name=name,
                 defaults={"host": host, "port": port, "role": role, "status": status},
             )
+            # demo-self 的端口跟着 --port 走；已存在时必须显式更新，
+            # 因为 get_or_create 的 defaults 只在新建时生效
+            if not created and name == "demo-self" and instance.port != port:
+                instance.port = port
+                instance.save(update_fields=["port", "updated_at"])
             if created or not instance.credentials.exists():
                 credential = InstanceCredential(
                     instance=instance,
