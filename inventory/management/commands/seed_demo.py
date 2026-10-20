@@ -1,7 +1,16 @@
-"""生成演示数据：python manage.py seed_demo
+"""生成演示数据与演示账号：python manage.py seed_demo
 
 幂等，可重复执行。
+
+为什么连账号一起建：`db.sqlite3` 不入库（里面是本地数据），
+面试官 clone 下来是空库。若还要他自己 `createsuperuser` 设密码，
+`/demo/` 和 `/api/docs/` 的调试链路就断了。演示数据本就应该包含「能登录的账号」。
+
+密码可用环境变量 `DEMO_PASSWORD` 覆盖；生产环境不要执行本命令。
 """
+import os
+
+from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
@@ -10,9 +19,12 @@ from inventory.models import Cluster, DBInstance, Department, InstanceCredential
 from inventory.services.rotation import generate_password
 from inventory.services.stats import build_daily_stats
 
+DEMO_USERNAME = "demo"
+DEFAULT_DEMO_PASSWORD = "Demo#2026"
+
 
 class Command(BaseCommand):
-    help = "生成部门 / 集群 / 实例 / 凭据的演示数据"
+    help = "生成部门 / 集群 / 实例 / 凭据的演示数据，并创建演示账号"
 
     @transaction.atomic
     def handle(self, *args, **options):
@@ -73,6 +85,7 @@ class Command(BaseCommand):
                 created_credentials += 1
 
         summary = build_daily_stats()
+        password, user_created = self._ensure_demo_user()
 
         self.stdout.write(
             self.style.SUCCESS(
@@ -82,6 +95,53 @@ class Command(BaseCommand):
             )
         )
         self.stdout.write(f"今日统计：{summary}")
-        self.stdout.write(
-            "下一步：python manage.py createsuperuser，然后 python manage.py runserver"
+        self.stdout.write("")
+
+        line = "=" * 60
+        self.stdout.write(self.style.SUCCESS(line))
+        if user_created:
+            self.stdout.write(
+                self.style.SUCCESS(f"  演示账号  {DEMO_USERNAME} / {password}   （管理员）")
+            )
+        else:
+            self.stdout.write(
+                self.style.WARNING(
+                    f"  演示账号  {DEMO_USERNAME} 已存在，密码未改动"
+                    f"（忘记可执行 manage.py changepassword {DEMO_USERNAME}）"
+                )
+            )
+        self.stdout.write("  控制台    http://127.0.0.1:8000/demo/")
+        self.stdout.write("  接口文档  http://127.0.0.1:8000/api/docs/")
+        self.stdout.write("  后台      http://127.0.0.1:8000/admin/")
+        self.stdout.write(self.style.SUCCESS(line))
+        self.stdout.write("下一步：python manage.py runserver")
+
+    def _ensure_demo_user(self) -> tuple[str, bool]:
+        """创建（或补权）演示账号。已存在时不动密码，避免覆盖用户自己改过的。"""
+        User = get_user_model()
+        password = os.getenv("DEMO_PASSWORD", DEFAULT_DEMO_PASSWORD)
+
+        user, created = User.objects.get_or_create(
+            username=DEMO_USERNAME,
+            defaults={
+                "email": "demo@example.com",
+                "is_staff": True,
+                "is_superuser": True,
+            },
         )
+        if created:
+            user.set_password(password)
+            user.save(update_fields=["password"])
+            return password, True
+
+        # 老账号可能权限不足（比如被手动改过），补齐但不改密码
+        changed = []
+        if not user.is_staff:
+            user.is_staff = True
+            changed.append("is_staff")
+        if not user.is_superuser:
+            user.is_superuser = True
+            changed.append("is_superuser")
+        if changed:
+            user.save(update_fields=changed)
+        return password, False

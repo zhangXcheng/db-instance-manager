@@ -25,10 +25,12 @@ venv\Scripts\activate                # macOS/Linux: source venv/bin/activate
 pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 python manage.py migrate
-python manage.py seed_demo           # 生成演示数据
-python manage.py createsuperuser     # 建管理员，用于登录控制台
+python manage.py seed_demo           # 生成演示数据 + 演示账号
 python manage.py runserver
 ```
+
+**演示账号：`demo` / `Demo#2026`**（管理员权限，由 `seed_demo` 自动创建）。
+想用自己的账号，再执行 `python manage.py createsuperuser` 即可。
 
 | 地址 | 说明 |
 |---|---|
@@ -54,7 +56,7 @@ python manage.py runserver
 | 5 | [`tests/test_rotation.py`](tests/test_rotation.py) | 补偿回滚、并发跳过、多账号独立轮换 |
 
 ```bash
-python manage.py test        # 64 个用例，约 25 秒
+python manage.py test        # 68 个用例，约 30 秒
 ruff check .                 # 静态检查
 ```
 
@@ -227,7 +229,7 @@ curl -X POST -H "Authorization: Token $TOKEN" http://127.0.0.1:8000/api/instance
 
 ```bash
 python manage.py test
-# Ran 64 tests
+# Ran 68 tests
 ```
 
 | 文件 | 覆盖内容 |
@@ -239,6 +241,7 @@ python manage.py test
 | `test_stats.py` | 部门×集群聚合、0 值行、幂等重跑、状态变化覆盖、名称快照 |
 | `test_middleware.py` | 响应头、健康检查豁免、异常请求留痕 |
 | `test_tasks.py` | **调度必须是 crontab**、任务汇总与失败上报、空 ID 语义 |
+| `test_commands.py` | `seed_demo` 幂等、自动建演示账号、不覆盖已改密码、自动补权 |
 
 CI 见 [`.github/workflows/ci.yml`](.github/workflows/ci.yml)：Python 3.12/3.13 双版本跑 ruff + check + test。
 
@@ -270,7 +273,7 @@ db_instance_manager/
 │   │   └── stats.py         # 日报聚合
 │   ├── templates/demo.html  # 单页演示控制台
 │   └── management/commands/seed_demo.py
-├── tests/                   # 64 个用例
+├── tests/                   # 68 个用例
 ├── .github/workflows/ci.yml
 ├── ruff.toml
 ├── requirements.txt
