@@ -278,3 +278,18 @@ class DemoPageTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "数据库实例管理系统")
         self.assertContains(response, "/api/instances/")
+
+
+class ApiDocsTests(TestCase):
+    def test_openapi_schema_available(self):
+        """schema 必须能生成，且覆盖到探测、轮换等自定义 action。"""
+        response = self.client.get("/api/schema/")
+        self.assertEqual(response.status_code, 200)
+
+        body = response.content.decode("utf-8")
+        self.assertIn("/api/instances/", body)
+        self.assertIn("probe", body)
+
+    def test_swagger_ui_renders(self):
+        response = self.client.get("/api/docs/")
+        self.assertEqual(response.status_code, 200)

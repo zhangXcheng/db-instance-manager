@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework.authtoken",
     "django_filters",
+    "drf_spectacular",
     # 业务
     "inventory",
 ]
@@ -153,6 +154,8 @@ REST_FRAMEWORK = {
         "rest_framework.filters.OrderingFilter",
     ],
     "EXCEPTION_HANDLER": "core.exceptions.api_exception_handler",
+    # OpenAPI schema 由 drf-spectacular 生成，Swagger UI 见 /api/docs/
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     # 端口探测接口容易被当成内网扫描器滥用，按用户/IP 限速；
     # 登录接口是暴力破解的首选目标，同样要限速。
     "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
@@ -160,6 +163,24 @@ REST_FRAMEWORK = {
         "probe": "60/min",
         "login": "10/min",
     },
+}
+
+# ---------------------------------------------------------------------------
+# OpenAPI / Swagger
+# ---------------------------------------------------------------------------
+SPECTACULAR_SETTINGS = {
+    "TITLE": "数据库实例管理系统 API",
+    "DESCRIPTION": (
+        "部门 / 集群 / 实例三级资产纳管，包含 TCP 端口探测、密码轮换与每日统计。\n\n"
+        "**认证方式**：先调用 `POST /api/auth/login/` 换取 Token，"
+        "再在请求头携带 `Authorization: Token <key>`。\n\n"
+        "带锁图标的接口需要管理员（`is_staff`）权限。"
+    ),
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    # 请求体与响应体分开生成组件，避免 write_only / read_only 字段混在一起
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SERVE_PERMISSIONS": ["rest_framework.permissions.AllowAny"],
 }
 
 # ---------------------------------------------------------------------------

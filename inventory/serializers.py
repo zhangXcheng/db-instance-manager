@@ -226,3 +226,77 @@ class BatchProbeRequestSerializer(serializers.Serializer):
 
 class RebuildStatRequestSerializer(serializers.Serializer):
     stat_date = serializers.DateField(required=False, help_text="补跑指定日期，格式 YYYY-MM-DD")
+
+
+# ---------------------------------------------------------------------------
+# 以下仅用于 OpenAPI schema（drf-spectacular），不参与实际读写
+# ---------------------------------------------------------------------------
+class LoginRequestSerializer(serializers.Serializer):
+    username = serializers.CharField(help_text="Django 用户名")
+    password = serializers.CharField(style={"input_type": "password"})
+
+
+class LoginUserSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    username = serializers.CharField()
+    is_staff = serializers.BooleanField()
+    is_superuser = serializers.BooleanField()
+
+
+class LoginResponseSerializer(serializers.Serializer):
+    token = serializers.CharField()
+    user = LoginUserSerializer()
+
+
+class ProbeResultSerializer(serializers.Serializer):
+    instance_id = serializers.IntegerField()
+    name = serializers.CharField()
+    endpoint = serializers.CharField(help_text="host:port")
+    reachable = serializers.BooleanField()
+    latency_ms = serializers.FloatField(allow_null=True, help_text="TCP 握手耗时")
+    error = serializers.CharField(allow_null=True, required=False)
+    checked_at = serializers.DateTimeField()
+
+
+class BatchProbeResponseSerializer(serializers.Serializer):
+    count = serializers.IntegerField()
+    results = ProbeResultSerializer(many=True)
+
+
+class RotationOutcomeSerializer(serializers.Serializer):
+    instance_id = serializers.IntegerField()
+    instance_name = serializers.CharField()
+    username = serializers.CharField()
+    status = serializers.CharField(help_text="rotated / skipped / failed / dry_run")
+    version = serializers.IntegerField(allow_null=True)
+    error = serializers.CharField(allow_null=True, required=False)
+
+
+class RotateResponseSerializer(serializers.Serializer):
+    dry_run = serializers.BooleanField()
+    count = serializers.IntegerField()
+    results = RotationOutcomeSerializer(many=True)
+
+
+class RevealResponseSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    instance_id = serializers.IntegerField()
+    username = serializers.CharField()
+    password = serializers.CharField(help_text="明文密码，本次调用会被写入审计日志")
+    version = serializers.IntegerField()
+    rotated_at = serializers.DateTimeField()
+    warning = serializers.CharField()
+
+
+class DepartmentStatSerializer(serializers.Serializer):
+    department_id = serializers.IntegerField()
+    department_name = serializers.CharField()
+    cluster_count = serializers.IntegerField()
+    total_count = serializers.IntegerField()
+    online_count = serializers.IntegerField()
+    offline_count = serializers.IntegerField()
+
+
+class DepartmentStatResponseSerializer(serializers.Serializer):
+    stat_date = serializers.DateField()
+    results = DepartmentStatSerializer(many=True)

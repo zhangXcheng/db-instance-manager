@@ -15,6 +15,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import validate_ipv46_address
 from django.db.models import Count, Prefetch, Sum
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.decorators import action
@@ -33,13 +34,20 @@ from inventory.models import (
 )
 from inventory.serializers import (
     BatchProbeRequestSerializer,
+    BatchProbeResponseSerializer,
     ClusterSerializer,
     CredentialAccessLogSerializer,
     DBInstanceSerializer,
     DepartmentSerializer,
+    DepartmentStatResponseSerializer,
     InstanceCredentialSerializer,
     InstanceStatDailySerializer,
+    LoginRequestSerializer,
+    LoginResponseSerializer,
+    ProbeResultSerializer,
     RebuildStatRequestSerializer,
+    RevealResponseSerializer,
+    RotateResponseSerializer,
 )
 from inventory.services.rotation import rotate_instance
 from inventory.services.stats import build_daily_stats
@@ -71,6 +79,13 @@ class LoginView(APIView):
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "login"
 
+    @extend_schema(
+        request=LoginRequestSerializer,
+        responses={200: LoginResponseSerializer},
+        summary="用户名密码换取 Token",
+        description="成功后返回 token 与用户信息，后续请求携带 `Authorization: Token <key>`。",
+        tags=["认证"],
+    )
     def post(self, request):
         username = request.data.get("username", "")
         password = request.data.get("password", "")
@@ -97,6 +112,7 @@ class LoginView(APIView):
 # ---------------------------------------------------------------------------
 # 部门
 # ---------------------------------------------------------------------------
+@extend_schema(tags=["资产"])
 class DepartmentViewSet(viewsets.ModelViewSet):
     queryset = (
         Department.objects.select_related("parent")
@@ -125,6 +141,7 @@ class DepartmentViewSet(viewsets.ModelViewSet):
 # ---------------------------------------------------------------------------
 # 集群
 # ---------------------------------------------------------------------------
+@extend_schema(tags=["资产"])
 class ClusterViewSet(viewsets.ModelViewSet):
     queryset = (
         Cluster.objects.select_related("department")
@@ -162,6 +179,7 @@ class ClusterViewSet(viewsets.ModelViewSet):
 # ---------------------------------------------------------------------------
 # 实例
 # ---------------------------------------------------------------------------
+@extend_schema(tags=["资产"])
 class DBInstanceViewSet(viewsets.ModelViewSet):
     serializer_class = DBInstanceSerializer
     # DRF 要求 @action 传入的 initkwargs 必须是视图类已有属性；
@@ -189,6 +207,13 @@ class DBInstanceViewSet(viewsets.ModelViewSet):
         throttle_classes=[ScopedRateThrottle],
         throttle_scope="probe",
     )
+    @extend_schema(
+        request=None,
+        responses={200: ProbeResultSerializer},
+        summary="探测单个实例的 TCP 端口",
+        description="尝试建立 TCP 连接并测量握手耗时，结果会回写到实例状态。",
+        tags=["探测"],
+    )
     def probe(self, request, pk=None):
         """探测单个实例的 TCP 端口是否可达，并回写状态。"""
         instance = self.get_object()
@@ -208,6 +233,13 @@ class DBInstanceViewSet(viewsets.ModelViewSet):
         url_path="probe-batch",
         throttle_classes=[ScopedRateThrottle],
         throttle_scope="probe",
+    )
+    @extend_schema(
+        request=BatchProbeRequestSerializer,
+        responses={200: BatchProbeResponseSerializer},
+        summary="批量探测实例",
+        description="线程池并发探测，最多 100 个；不传 ids 时取前若干个。",
+        tags=["探测"],
     )
     def probe_batch(self, request):
         """批量探测。不传 ids 时按配置上限取前 N 个，避免一次打爆线程池。"""
@@ -248,6 +280,13 @@ class DBInstanceViewSet(viewsets.ModelViewSet):
         url_path="rotate-password",
         permission_classes=[IsAdminUser],
     )
+    @extend_schema(
+        request=None,
+        responses={200: RotateResponseSerializer},
+        summary="手动轮换实例密码（管理员）",
+        description="不等 12 小时周期，立即触发一次轮换；支持 dry_run 只预演不落库。",
+        tags=["凭据"],
+    )
     def rotate_password(self, request, pk=None):
         """手动触发轮换（不等 12 小时周期），用于应急。"""
         instance = self.get_object()
@@ -265,6 +304,7 @@ class DBInstanceViewSet(viewsets.ModelViewSet):
 # ---------------------------------------------------------------------------
 # 凭据
 # ---------------------------------------------------------------------------
+@extend_schema(tags=["凭据"])
 class InstanceCredentialViewSet(viewsets.ReadOnlyModelViewSet):
     """凭据只读。新凭据只能由轮换任务产生，禁止通过 API 直接写入。"""
 
@@ -276,6 +316,13 @@ class InstanceCredentialViewSet(viewsets.ReadOnlyModelViewSet):
     ordering_fields = ["id", "rotated_at", "version"]
 
     @action(detail=True, methods=["post"], permission_classes=[IsAdminUser])
+    @extend_schema(
+        request=None,
+        responses={200: RevealResponseSerializer},
+        summary="查看明文密码（管理员）",
+        description="每次调用都会写入 CredentialAccessLog，记录操作人、IP 与 UA。",
+        tags=["凭据"],
+    )
     def reveal(self, request, pk=None):
         """查看明文密码。管理员限定 + 强制审计。"""
         credential = self.get_object()
@@ -305,6 +352,11 @@ class InstanceCredentialViewSet(viewsets.ReadOnlyModelViewSet):
         )
 
     @action(detail=True, methods=["get"])
+    @extend_schema(
+        responses={200: CredentialAccessLogSerializer(many=True)},
+        summary="查看该凭据的审计记录",
+        tags=["凭据"],
+    )
     def access_logs(self, request, pk=None):
         credential = self.get_object()
         logs = credential.access_logs.all()[:100]
@@ -314,6 +366,7 @@ class InstanceCredentialViewSet(viewsets.ReadOnlyModelViewSet):
 # ---------------------------------------------------------------------------
 # 统计
 # ---------------------------------------------------------------------------
+@extend_schema(tags=["统计"])
 class DailyStatViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = InstanceStatDaily.objects.select_related("department", "cluster").order_by(
         "-stat_date", "id"
@@ -323,6 +376,12 @@ class DailyStatViewSet(viewsets.ReadOnlyModelViewSet):
     ordering_fields = ["stat_date", "total_count"]
 
     @action(detail=False, methods=["get"], url_path="by-department")
+    @extend_schema(
+        responses={200: DepartmentStatResponseSerializer},
+        summary="按部门汇总某天的实例数量",
+        description="stat_date 缺省为今天；数据来自每日统计快照。",
+        tags=["统计"],
+    )
     def by_department(self, request):
         """按部门维度汇总某一天的数据。"""
         stat_date = request.query_params.get("stat_date") or timezone.localdate().isoformat()
@@ -340,6 +399,12 @@ class DailyStatViewSet(viewsets.ReadOnlyModelViewSet):
         return Response({"stat_date": stat_date, "results": list(rows)})
 
     @action(detail=False, methods=["post"], permission_classes=[IsAdminUser])
+    @extend_schema(
+        request=RebuildStatRequestSerializer,
+        summary="补跑某天的统计（管理员）",
+        description="幂等：同一天重复执行只会覆盖，不会产生重复行。",
+        tags=["统计"],
+    )
     def rebuild(self, request):
         """手动补跑某天的统计（幂等，重复执行结果一致）。"""
         payload = RebuildStatRequestSerializer(data=request.data)

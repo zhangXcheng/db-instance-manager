@@ -33,6 +33,7 @@ python manage.py runserver
 | 地址 | 说明 |
 |---|---|
 | <http://127.0.0.1:8000/demo/> | **可视化控制台**（单页、零依赖，可点探测/轮换） |
+| <http://127.0.0.1:8000/api/docs/> | **Swagger UI**，全部接口、参数与响应结构 |
 | <http://127.0.0.1:8000/api/> | DRF 可浏览 API，可直接操作所有接口 |
 | <http://127.0.0.1:8000/admin/> | Django Admin |
 
@@ -53,7 +54,7 @@ python manage.py runserver
 | 5 | [`tests/test_rotation.py`](tests/test_rotation.py) | 补偿回滚、并发跳过、多账号独立轮换 |
 
 ```bash
-python manage.py test        # 62 个用例，约 25 秒
+python manage.py test        # 64 个用例，约 25 秒
 ruff check .                 # 静态检查
 ```
 
@@ -102,6 +103,9 @@ erDiagram
 ## API
 
 所有接口需要认证：`POST /api/auth/login/` 换取 Token，之后带 `Authorization: Token <key>`。
+
+在线文档由 **drf-spectacular** 生成，启动后访问 `/api/docs/`（Swagger UI，可直接调试），
+或 `/api/schema/` 获取 OpenAPI 3.0 描述文件，可直接导入 Postman / Apifox。
 
 | 方法 | 路径 | 说明 |
 |---|---|---|
@@ -223,13 +227,13 @@ curl -X POST -H "Authorization: Token $TOKEN" http://127.0.0.1:8000/api/instance
 
 ```bash
 python manage.py test
-# Ran 62 tests
+# Ran 64 tests
 ```
 
 | 文件 | 覆盖内容 |
 |---|---|
 | `test_models.py` | 加解密往返、密文不含明文、多密钥轮换、掩码 |
-| `test_api.py` | 四个模型 CRUD、过滤搜索、字段校验、权限、凭据不泄露密码、明文查看审计、演示页渲染 |
+| `test_api.py` | 四个模型 CRUD、过滤搜索、字段校验、权限、凭据不泄露密码、明文查看审计、演示页与 OpenAPI 文档 |
 | `test_probe.py` | 可达 / 超时 / 拒绝（mock socket）、状态回写、批量探测、匿名拦截 |
 | `test_rotation.py` | 版本递进、旧版失效、驱动失败不动本地、dry-run、**补偿回滚**、并发跳过、多账号独立 |
 | `test_stats.py` | 部门×集群聚合、0 值行、幂等重跑、状态变化覆盖、名称快照 |
@@ -266,7 +270,7 @@ db_instance_manager/
 │   │   └── stats.py         # 日报聚合
 │   ├── templates/demo.html  # 单页演示控制台
 │   └── management/commands/seed_demo.py
-├── tests/                   # 62 个用例
+├── tests/                   # 64 个用例
 ├── .github/workflows/ci.yml
 ├── ruff.toml
 ├── requirements.txt
