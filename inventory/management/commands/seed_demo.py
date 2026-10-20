@@ -130,9 +130,9 @@ class Command(BaseCommand):
                     f"（忘记可执行 manage.py changepassword {DEMO_USERNAME}）"
                 )
             )
-        self.stdout.write("  控制台    http://127.0.0.1:8000/demo/")
-        self.stdout.write("  接口文档  http://127.0.0.1:8000/api/docs/")
-        self.stdout.write("  后台      http://127.0.0.1:8000/admin/")
+        self.stdout.write(f"  控制台    http://127.0.0.1:{demo_port}/demo/")
+        self.stdout.write(f"  接口文档  http://127.0.0.1:{demo_port}/api/docs/")
+        self.stdout.write(f"  后台      http://127.0.0.1:{demo_port}/admin/")
         self.stdout.write(self.style.SUCCESS(line))
         self.stdout.write(
             f"提示：runserver 起来后，对 demo-self（127.0.0.1:{demo_port}）点探测即可看到「可达」"
