@@ -1,0 +1,87 @@
+"""生成演示数据：python manage.py seed_demo
+
+幂等，可重复执行。
+"""
+from django.core.management.base import BaseCommand
+from django.db import transaction
+from django.utils import timezone
+
+from inventory.models import Cluster, DBInstance, Department, InstanceCredential
+from inventory.services.rotation import generate_password
+from inventory.services.stats import build_daily_stats
+
+
+class Command(BaseCommand):
+    help = "生成部门 / 集群 / 实例 / 凭据的演示数据"
+
+    @transaction.atomic
+    def handle(self, *args, **options):
+        departments = [
+            ("技术部", "TECH", "张伟"),
+            ("财务部", "FIN", "李娜"),
+        ]
+        department_map = {}
+        for name, code, owner in departments:
+            department, _ = Department.objects.get_or_create(
+                code=code, defaults={"name": name, "owner": owner}
+            )
+            department_map[code] = department
+
+        clusters = [
+            ("订单主库", "ORDER-MYSQL", "TECH", Cluster.Engine.MYSQL, Cluster.Environment.PROD),
+            ("用户中心", "USER-MYSQL", "TECH", Cluster.Engine.MYSQL, Cluster.Environment.PROD),
+            ("缓存集群", "CACHE-REDIS", "TECH", Cluster.Engine.REDIS, Cluster.Environment.STAGING),
+            ("财务库", "FIN-MYSQL", "FIN", Cluster.Engine.MYSQL, Cluster.Environment.PROD),
+        ]
+        cluster_map = {}
+        for name, code, department_code, engine, environment in clusters:
+            cluster, _ = Cluster.objects.get_or_create(
+                code=code,
+                defaults={
+                    "name": name,
+                    "department": department_map[department_code],
+                    "engine": engine,
+                    "environment": environment,
+                },
+            )
+            cluster_map[code] = cluster
+
+        instances = [
+            ("order-db-01", "ORDER-MYSQL", "10.0.1.11", 3306, DBInstance.Role.PRIMARY, DBInstance.Status.ONLINE),
+            ("order-db-02", "ORDER-MYSQL", "10.0.1.12", 3306, DBInstance.Role.REPLICA, DBInstance.Status.ONLINE),
+            ("user-db-01", "USER-MYSQL", "10.0.2.11", 3306, DBInstance.Role.PRIMARY, DBInstance.Status.OFFLINE),
+            ("cache-01", "CACHE-REDIS", "10.0.3.11", 6379, DBInstance.Role.STANDALONE, DBInstance.Status.ONLINE),
+            ("finance-db-01", "FIN-MYSQL", "10.0.4.11", 3306, DBInstance.Role.PRIMARY, DBInstance.Status.UNKNOWN),
+        ]
+        created_credentials = 0
+        for name, cluster_code, host, port, role, status in instances:
+            instance, created = DBInstance.objects.get_or_create(
+                cluster=cluster_map[cluster_code],
+                name=name,
+                defaults={"host": host, "port": port, "role": role, "status": status},
+            )
+            if created or not instance.credentials.exists():
+                credential = InstanceCredential(
+                    instance=instance,
+                    username="root",
+                    version=1,
+                    is_current=True,
+                    rotated_at=timezone.now(),
+                )
+                credential.set_password(generate_password())
+                credential.save()
+                created_credentials += 1
+
+        summary = build_daily_stats()
+
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"演示数据就绪：部门 {Department.objects.count()} 个，"
+                f"集群 {Cluster.objects.count()} 个，实例 {DBInstance.objects.count()} 个，"
+                f"新建凭据 {created_credentials} 条"
+            )
+        )
+        self.stdout.write(f"今日统计：{summary}")
+        self.stdout.write(
+            "下一步：python manage.py createsuperuser，然后 python manage.py runserver"
+        )
